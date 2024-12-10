@@ -82,18 +82,28 @@ class XTTSProvider(Provider):
         """Load TTS from XTTS."""
         url = f"http://{self.host}:{self.port}/tts_to_audio"
         
-        data = {
+        json_data = {
             "text": message,
             "speaker_wav": self.speaker_wav,
             "language": language
         }
         
-        _LOGGER.debug("Attempting TTS POST request to %s with data: %s", url, data)
+        headers = {
+            "Content-Type": "application/json"
+        }
+        
+        _LOGGER.debug("Attempting TTS POST request to %s with data: %s", url, json_data)
         
         try:
             async with aiohttp.ClientSession() as session:
                 _LOGGER.debug("Making POST request to XTTS server")
-                async with session.post(url, json=data, allow_redirects=True, timeout=30) as response:
+                async with session.post(
+                    url, 
+                    json=json_data,
+                    headers=headers,
+                    allow_redirects=True,
+                    timeout=30
+                ) as response:
                     _LOGGER.debug("Got response with status: %s", response.status)
                     _LOGGER.debug("Response headers: %s", response.headers)
                     
@@ -106,6 +116,10 @@ class XTTSProvider(Provider):
                     data = await response.read()
                     _LOGGER.debug("Successfully read %d bytes of audio data", len(data))
                     
+                    # Verify we got actual WAV data
+                    if len(data) > 0:
+                        _LOGGER.debug("First 4 bytes: %s", data[:4].hex())
+                        
                     return "wav", data
 
         except aiohttp.ClientError as client_error:
@@ -113,6 +127,7 @@ class XTTSProvider(Provider):
             return None, None
         except Exception as e:
             _LOGGER.error("Unexpected error: %s", str(e))
+            _LOGGER.exception("Full exception:")
             return None, None
 
 class XTTSTTSEntity(TextToSpeechEntity):
