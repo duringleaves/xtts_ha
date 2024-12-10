@@ -1,4 +1,3 @@
-"""Support for the XTTS speech service."""
 import logging
 import aiohttp
 import voluptuous as vol
@@ -7,6 +6,8 @@ from homeassistant.components.tts import (
     CONF_LANG,
     PLATFORM_SCHEMA,
     Provider,
+    TextToSpeechEntity,
+    DOMAIN as TTS_DOMAIN,
 )
 from homeassistant.const import CONF_HOST, CONF_PORT
 import homeassistant.helpers.config_validation as cv
@@ -17,23 +18,28 @@ DEFAULT_LANG = "en"
 DEFAULT_PORT = 8020
 SUPPORT_LANGUAGES = ["en"]
 
+CONF_SPEAKER_WAV = "speaker_wav"
+
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_HOST): cv.string,
     vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
     vol.Optional(CONF_LANG, default=DEFAULT_LANG): vol.In(SUPPORT_LANGUAGES),
-    vol.Required("speaker_wav"): cv.string,
+    vol.Required(CONF_SPEAKER_WAV): cv.string,
 })
 
-async def async_get_engine(hass, config, discovery_info=None):
-    """Set up XTTS speech component."""
-    _LOGGER.debug("Setting up XTTS provider with config: %s", config)
-    return XTTSProvider(
+async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
+    """Set up the XTTS speech platform."""
+    _LOGGER.debug("Setting up XTTS TTS platform")
+    
+    tts_service = XTTSProvider(
         hass,
         config[CONF_HOST],
         config[CONF_PORT],
         config[CONF_LANG],
-        config["speaker_wav"]
+        config[CONF_SPEAKER_WAV]
     )
+
+    async_add_devices([XTTSTTSEntity(tts_service)])
 
 class XTTSProvider(Provider):
     """The XTTS API provider."""
@@ -92,3 +98,24 @@ class XTTSProvider(Provider):
         except Exception as e:
             _LOGGER.error("Unexpected error: %s", str(e))
             return None, None
+
+class XTTSTTSEntity(TextToSpeechEntity):
+    """The XTTS TTS API entity."""
+    
+    def __init__(self, tts_service):
+        """Initialize XTTS TTS entity."""
+        self._tts_service = tts_service
+
+    @property
+    def name(self):
+        """Return name of entity."""
+        return "XTTS TTS"
+
+    @property
+    def supported_languages(self):
+        """Return list of supported languages."""
+        return self._tts_service.supported_languages
+
+    async def async_get_tts_audio(self, message, language, options=None):
+        """Load TTS audio."""
+        return await self._tts_service.async_get_tts_audio(message, language, options)
