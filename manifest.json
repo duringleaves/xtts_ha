@@ -2,11 +2,9 @@
     "domain": "xtts_tts",
     "name": "XTTS Text-to-Speech",
     "documentation": "",
-    "dependencies": [],
+    "dependencies": ["tts"],
     "codeowners": [],
-    "requirements": [
-        "aiohttp"
-    ],
+    "requirements": ["aiohttp"],
     "version": "1.0.0",
     "iot_class": "local_push"
 }
