@@ -26,6 +26,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 
 async def async_get_engine(hass, config, discovery_info=None):
     """Set up XTTS speech component."""
+    _LOGGER.debug("Setting up XTTS provider with config: %s", config)
     return XTTSProvider(
         hass,
         config[CONF_HOST],
@@ -45,6 +46,10 @@ class XTTSProvider(Provider):
         self.lang = lang
         self.speaker_wav = speaker_wav
         self.name = "XTTS"
+        _LOGGER.debug(
+            "Initialized XTTS provider with host=%s, port=%s, lang=%s, speaker=%s",
+            host, port, lang, speaker_wav
+        )
 
     @property
     def default_language(self):
@@ -66,16 +71,24 @@ class XTTSProvider(Provider):
             "language": language
         }
         
+        _LOGGER.debug("Attempting TTS request to %s with params: %s", url, params)
+        
         try:
             async with aiohttp.ClientSession() as session:
+                _LOGGER.debug("Making GET request to XTTS server")
                 async with session.get(url, params=params) as response:
+                    _LOGGER.debug("Got response with status: %s", response.status)
                     if response.status != 200:
                         _LOGGER.error("Error %d on load URL %s", response.status, url)
                         return None, None
 
                     data = await response.read()
+                    _LOGGER.debug("Successfully read %d bytes of audio data", len(data))
                     return "wav", data
 
         except aiohttp.ClientError as client_error:
             _LOGGER.error("Error on load URL: %s", client_error)
+            return None, None
+        except Exception as e:
+            _LOGGER.error("Unexpected error: %s", str(e))
             return None, None
