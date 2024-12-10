@@ -41,6 +41,17 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
 
     async_add_devices([XTTSTTSEntity(tts_service)])
 
+def get_engine(hass, config, discovery_info=None):
+    """Set up XTTS speech component."""
+    _LOGGER.debug("Setting up XTTS provider with config: %s", config)
+    return XTTSProvider(
+        hass,
+        config[CONF_HOST],
+        config[CONF_PORT],
+        config.get(CONF_LANG, DEFAULT_LANG),
+        config[CONF_SPEAKER_WAV]
+    )
+
 class XTTSProvider(Provider):
     """The XTTS API provider."""
 
