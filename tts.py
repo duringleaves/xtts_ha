@@ -80,27 +80,32 @@ class XTTSProvider(Provider):
 
     async def async_get_tts_audio(self, message, language, options=None):
         """Load TTS from XTTS."""
-        url = f"http://{self.host}:{self.port}/tts_stream"
+        url = f"http://{self.host}:{self.port}/tts_to_audio"
         
-        params = {
+        data = {
             "text": message,
             "speaker_wav": self.speaker_wav,
             "language": language
         }
         
-        _LOGGER.debug("Attempting TTS request to %s with params: %s", url, params)
+        _LOGGER.debug("Attempting TTS POST request to %s with data: %s", url, data)
         
         try:
             async with aiohttp.ClientSession() as session:
-                _LOGGER.debug("Making GET request to XTTS server")
-                async with session.get(url, params=params) as response:
+                _LOGGER.debug("Making POST request to XTTS server")
+                async with session.post(url, json=data, allow_redirects=True, timeout=30) as response:
                     _LOGGER.debug("Got response with status: %s", response.status)
+                    _LOGGER.debug("Response headers: %s", response.headers)
+                    
                     if response.status != 200:
                         _LOGGER.error("Error %d on load URL %s", response.status, url)
+                        response_text = await response.text()
+                        _LOGGER.error("Response content: %s", response_text)
                         return None, None
 
                     data = await response.read()
                     _LOGGER.debug("Successfully read %d bytes of audio data", len(data))
+                    
                     return "wav", data
 
         except aiohttp.ClientError as client_error:
